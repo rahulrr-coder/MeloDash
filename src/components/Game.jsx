@@ -12,11 +12,13 @@ const Game = () => {
   
   const {
     gameState,
+    highScore,
     handleKeyDown,
     handleKeyUp,
     togglePause,
     restartGame,
-    startGame
+    startGame,
+    resetHighScore
   } = useGameLogic();
 
   useEffect(() => {
@@ -44,14 +46,20 @@ const Game = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-white p-4">
       <h1 className="text-4xl font-bold mb-2">Piano Tiles</h1>
-      <div className="mb-4 text-2xl flex items-center gap-4">
-        <span>Score: {gameState.score}</span>
+      
+      {/* Score and High Score Display */}
+      <div className="mb-4 flex flex-col items-center">
+        <div className="flex items-center gap-6 text-2xl">
+          <div>Score: <span className="font-bold">{Math.floor(gameState.score)}</span></div>
+          <div>High Score: <span className="font-bold text-yellow-400">{Math.floor(highScore)}</span></div>
+        </div>
+        
         {debugMode && (
-          <span className="text-yellow-300">
+          <div className="text-yellow-300 text-sm mt-1">
             Tiles: {gameState.tiles.length} | 
             Speed: {gameState.tileSpeed.toFixed(1)} | 
             Started: {gameState.isStarted ? 'Yes' : 'No'}
-          </span>
+          </div>
         )}
       </div>
       
@@ -101,7 +109,8 @@ const Game = () => {
         {!gameState.isStarted && !gameState.isGameOver && (
           <GameOverlay 
             type="start" 
-            onStart={startGame} 
+            onStart={startGame}
+            highScore={highScore} 
           />
         )}
         
@@ -110,7 +119,9 @@ const Game = () => {
           <GameOverlay 
             type="gameover" 
             score={gameState.score} 
+            highScore={highScore}
             onRestart={restartGame} 
+            isNewHighScore={gameState.score >= highScore}
           />
         )}
         
@@ -131,6 +142,8 @@ const Game = () => {
         onTogglePause={togglePause} 
         onRestart={restartGame} 
         onStart={startGame}
+        onResetHighScore={resetHighScore}
+        showResetHighScore={highScore > 0}
       />
       
       <div className="mt-6 text-gray-400">

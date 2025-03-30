@@ -1,8 +1,17 @@
 import React from 'react';
 
-const GameControls = ({ isPaused, isGameOver, isStarted, onTogglePause, onRestart, onStart }) => {
+const GameControls = ({ 
+  isPaused, 
+  isGameOver, 
+  isStarted, 
+  onTogglePause, 
+  onRestart, 
+  onStart,
+  onResetHighScore,
+  showResetHighScore 
+}) => {
   return (
-    <div className="mt-6 flex gap-4">
+    <div className="mt-6 flex flex-wrap gap-4 justify-center">
       {!isStarted && !isGameOver && (
         <button
           onClick={onStart}
@@ -27,6 +36,15 @@ const GameControls = ({ isPaused, isGameOver, isStarted, onTogglePause, onRestar
           className="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded-lg text-lg transition-colors"
         >
           Restart
+        </button>
+      )}
+      
+      {showResetHighScore && (
+        <button
+          onClick={onResetHighScore}
+          className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-lg text-lg transition-colors"
+        >
+          Reset High Score
         </button>
       )}
     </div>

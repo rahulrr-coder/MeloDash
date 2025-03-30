@@ -5,13 +5,20 @@ const useGameLogic = () => {
   // Use a ref to keep track of game area height
   const gameAreaHeight = useRef(window.innerHeight * 0.7);
   
+  // Load high score from localStorage initially
+  const initialHighScore = localStorage.getItem('pianoTilesHighScore') 
+    ? parseInt(localStorage.getItem('pianoTilesHighScore')) 
+    : 0;
+  
+  const [highScore, setHighScore] = useState(initialHighScore);
+  
   const [gameState, setGameState] = useState({
     tiles: [],
     score: 0,
     isGameOver: false,
     isPaused: false,
     isStarted: false,
-    tileSpeed: 1, // Reduced initial speed for debugging
+    tileSpeed: 1,
     lastTileTime: 0,
     pressedKeys: { ArrowLeft: false, ArrowDown: false, ArrowRight: false, ArrowUp: false },
     difficulty: 1,
@@ -66,11 +73,18 @@ const useGameLogic = () => {
           const newCombo = prev.combo + 1;
           const comboBonus = Math.floor(newCombo / 5) * 0.1;
           const scoreIncrease = 1 + comboBonus;
+          const newScore = prev.score + scoreIncrease;
+          
+          // Check if this is a new high score
+          if (newScore > highScore) {
+            setHighScore(newScore);
+            localStorage.setItem('pianoTilesHighScore', newScore.toString());
+          }
           
           return {
             ...prev,
             tiles: updatedTiles,
-            score: prev.score + scoreIncrease,
+            score: newScore,
             combo: newCombo
           };
         });
@@ -86,7 +100,7 @@ const useGameLogic = () => {
     if (e.key === " " && (gameState.isGameOver || gameState.isPaused)) {
       restartGame();
     }
-  }, [gameState]);
+  }, [gameState, highScore]);
 
   const handleKeyUp = useCallback((e) => {
     if (LANES.some(lane => lane.key === e.key)) {
@@ -108,7 +122,7 @@ const useGameLogic = () => {
     const difficulty = 1 + Math.floor(gameState.score / 10) * 0.2;
     
     // Adjust tile generation frequency based on difficulty
-    const tileInterval = Math.max(800, 2000 - (difficulty * 200)); // Increased intervals for debugging
+    const tileInterval = Math.max(800, 2000 - (difficulty * 200));
     
     // Speed increases with score but starts slower for debugging
     const tileSpeed = 0.5 + Math.floor(gameState.score / 10) * 0.2;
@@ -122,8 +136,6 @@ const useGameLogic = () => {
         tiles: [...prev.tiles, newTile],
         lastTileTime: now
       }));
-      
-      console.log("Generated new tile", newTile); // Debug log
     }
     
     // Move existing tiles down
@@ -151,6 +163,12 @@ const useGameLogic = () => {
       const missedTiles = updatedTiles.filter(tile => tile.missed);
       const gameOver = missedTiles.length > 0;
       
+      // If game is over, check for high score
+      if (gameOver && prev.score > highScore) {
+        setHighScore(prev.score);
+        localStorage.setItem('pianoTilesHighScore', prev.score.toString());
+      }
+      
       return {
         ...prev,
         tiles: updatedTiles,
@@ -159,10 +177,9 @@ const useGameLogic = () => {
         difficulty
       };
     });
-  }, [gameState, generateTile]);
+  }, [gameState, generateTile, highScore]);
 
   const startGame = () => {
-    console.log("Game started");
     setGameState(prev => ({
       ...prev,
       isStarted: true,
@@ -171,7 +188,6 @@ const useGameLogic = () => {
   };
 
   const restartGame = () => {
-    console.log("Game restarted");
     setGameState({
       tiles: [],
       score: 0,
@@ -193,6 +209,12 @@ const useGameLogic = () => {
     }));
   };
 
+  // Reset high score function
+  const resetHighScore = () => {
+    setHighScore(0);
+    localStorage.removeItem('pianoTilesHighScore');
+  };
+
   // Set up game loop
   useEffect(() => {
     const gameLoop = setInterval(() => {
@@ -202,24 +224,15 @@ const useGameLogic = () => {
     return () => clearInterval(gameLoop);
   }, [updateGame]);
 
-  // Debug logging to help diagnose the issue
-  useEffect(() => {
-    if (gameState.isStarted) {
-      console.log("Game state:", {
-        tilesCount: gameState.tiles.length,
-        isStarted: gameState.isStarted,
-        isPaused: gameState.isPaused
-      });
-    }
-  }, [gameState.isStarted, gameState.tiles.length]);
-
   return {
     gameState,
+    highScore,
     handleKeyDown,
     handleKeyUp,
     togglePause,
     restartGame,
-    startGame
+    startGame,
+    resetHighScore
   };
 };
 

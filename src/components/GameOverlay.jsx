@@ -5,7 +5,7 @@ const GameOverlay = ({ type, score, highScore, onRestart, onResume, onStart, isN
     <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-20">
       {type === 'start' ? (
         <>
-          <div className="text-5xl mb-4 font-bold">Piano Tiles</div>
+          <div className="text-5xl mb-4 font-bold">MeloDash</div>
           {highScore > 0 && (
             <div className="text-xl mb-2 text-yellow-400">
               High Score: {Math.floor(highScore)}

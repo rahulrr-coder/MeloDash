@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import './App.css'
-import PianoTileGame from './PianoTile'
+import Game from './components/Game';
 
 function App() {
-
   return (
-    <>
-      <div className="App">
-        <PianoTileGame/></div>
-    </>
-  )
+    <div className="min-h-screen bg-gray-900">
+      <Game />
+    </div>
+  );
 }
 
 export default App

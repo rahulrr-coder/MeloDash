@@ -35,15 +35,24 @@ const PianoTileGame = () => {
         e.preventDefault();
         
         const laneIndex = lanes.findIndex(lane => lane.key === e.key);
+        
+        // Update pressedKeys state
+        setGameState(prev => ({
+          ...prev,
+          pressedKeys: { ...prev.pressedKeys, [e.key]: true }
+        }));
+        
+        // Look for tiles in the hit zone
         const bottomTiles = gameState.tiles.filter(
           tile => tile.lane === laneIndex && 
-          tile.y >= 350 && 
-          tile.y <= 450 && 
+          tile.y >= 300 && 
+          tile.y <= 500 && 
           !tile.hit && 
           !tile.missed
         );
         
         if (bottomTiles.length > 0) {
+          // Hit successful
           setGameState(prev => {
             const updatedTiles = prev.tiles.map(tile => {
               if (tile.id === bottomTiles[0].id) {
@@ -55,16 +64,11 @@ const PianoTileGame = () => {
             return {
               ...prev,
               tiles: updatedTiles,
-              score: prev.score + 1,
-              pressedKeys: { ...prev.pressedKeys, [e.key]: true }
+              score: prev.score + 1
             };
           });
-        } else {
-          setGameState(prev => ({
-            ...prev,
-            isGameOver: true
-          }));
         }
+        // REMOVED: Don't end game for pressing keys with no tiles
       }
     }
     
@@ -73,7 +77,7 @@ const PianoTileGame = () => {
     }
   }, [gameState, lanes]);
 
-  
+
   const handleKeyUp = useCallback((e) => {
     if (lanes.some(lane => lane.key === e.key)) {
       setGameState(prev => ({
@@ -182,6 +186,10 @@ const PianoTileGame = () => {
             </div>
           ))}
         </div>
+
+          
+  {/* Hit zone indicator */}
+  <div className="absolute top-[300px] left-0 w-full h-[200px] border-t-2 border-b-2 border-white border-opacity-20"></div>
         
         {/* Falling tiles */}
         {gameState.tiles.map(tile => (

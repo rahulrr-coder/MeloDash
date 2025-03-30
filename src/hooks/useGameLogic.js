@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { LANES } from '../constants';
+import useAudio from './useAudio';
 
 const useGameLogic = () => {
+  // Use audio hook
+  const { playNote, playSuccess, playFail, initAudio } = useAudio();
+  
   // Use a ref to keep track of game area height
   const gameAreaHeight = useRef(window.innerHeight * 0.7);
   
@@ -62,6 +66,9 @@ const useGameLogic = () => {
       
       if (bottomTiles.length > 0) {
         // Hit successful
+        // Play note for the lane
+        playNote(laneIndex);
+        
         setGameState(prev => {
           const updatedTiles = prev.tiles.map(tile => {
             if (tile.id === bottomTiles[0].id) {
@@ -74,6 +81,11 @@ const useGameLogic = () => {
           const comboBonus = Math.floor(newCombo / 5) * 0.1;
           const scoreIncrease = 1 + comboBonus;
           const newScore = prev.score + scoreIncrease;
+          
+          // Play success sound on milestone combos
+          if (newCombo % 10 === 0) {
+            playSuccess();
+          }
           
           // Check if this is a new high score
           if (newScore > highScore) {
@@ -100,7 +112,7 @@ const useGameLogic = () => {
     if (e.key === " " && (gameState.isGameOver || gameState.isPaused)) {
       restartGame();
     }
-  }, [gameState, highScore]);
+  }, [gameState, highScore, playNote, playSuccess]);
 
   const handleKeyUp = useCallback((e) => {
     if (LANES.some(lane => lane.key === e.key)) {
@@ -140,6 +152,8 @@ const useGameLogic = () => {
     
     // Move existing tiles down
     setGameState(prev => {
+      let newMissedTile = false;
+      
       // Create a new array of tiles with updated positions
       const updatedTiles = prev.tiles.map(tile => {
         // Add speed to y position to move the tile down
@@ -147,6 +161,7 @@ const useGameLogic = () => {
         
         // Check if tile has been missed (reached bottom without being hit)
         if (newY > 90 && !tile.hit && !tile.missed) { // Using percentage (90% of game area)
+          newMissedTile = true;
           return { ...tile, y: newY, missed: true };
         }
         
@@ -158,6 +173,11 @@ const useGameLogic = () => {
         // Update tile position
         return { ...tile, y: newY };
       }).filter(Boolean); // Remove null tiles
+      
+      // Play fail sound if a tile was missed
+      if (newMissedTile) {
+        playFail();
+      }
       
       // Check for game over condition
       const missedTiles = updatedTiles.filter(tile => tile.missed);
@@ -177,9 +197,12 @@ const useGameLogic = () => {
         difficulty
       };
     });
-  }, [gameState, generateTile, highScore]);
+  }, [gameState, generateTile, highScore, playFail]);
 
   const startGame = () => {
+    // Initialize audio context when game starts
+    initAudio();
+    
     setGameState(prev => ({
       ...prev,
       isStarted: true,
@@ -200,6 +223,9 @@ const useGameLogic = () => {
       difficulty: 1,
       combo: 0
     });
+    
+    // Initialize audio for restart
+    initAudio();
   };
 
   const togglePause = () => {

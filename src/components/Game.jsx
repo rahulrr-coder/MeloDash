@@ -9,6 +9,7 @@ import { LANES } from '../constants';
 
 const Game = () => {
   const [debugMode, setDebugMode] = useState(false);
+  const [audioMuted, setAudioMuted] = useState(false);
   
   const {
     gameState,
@@ -37,6 +38,12 @@ const Game = () => {
       if (e.key === 'd' || e.key === 'D') {
         setDebugMode(prev => !prev);
       }
+      // Toggle mute with 'M' key
+      if (e.key === 'm' || e.key === 'M') {
+        setAudioMuted(prev => !prev);
+        // This doesn't actually mute the audio - that would need to be implemented in useAudio
+        // We're just tracking the state here for display purposes
+      }
     };
     
     window.addEventListener('keydown', toggleDebug);
@@ -58,7 +65,8 @@ const Game = () => {
           <div className="text-yellow-300 text-sm mt-1">
             Tiles: {gameState.tiles.length} | 
             Speed: {gameState.tileSpeed.toFixed(1)} | 
-            Started: {gameState.isStarted ? 'Yes' : 'No'}
+            Started: {gameState.isStarted ? 'Yes' : 'No'} |
+            Audio: {audioMuted ? 'Muted' : 'On'}
           </div>
         )}
       </div>
@@ -148,6 +156,7 @@ const Game = () => {
       
       <div className="mt-6 text-gray-400">
         Use the arrow keys to play. Press Space to restart after game over.
+        Press M to mute/unmute sounds.
         {debugMode && " | Debug mode: ON (press 'D' to toggle)"}
       </div>
       

@@ -7,6 +7,7 @@ const useGameLogic = () => {
     score: 0,
     isGameOver: false,
     isPaused: false,
+    isStarted: false, // Add new state to track if game has started
     tileSpeed: 2,
     lastTileTime: Date.now(),
     pressedKeys: { ArrowLeft: false, ArrowDown: false, ArrowRight: false, ArrowUp: false },
@@ -26,7 +27,8 @@ const useGameLogic = () => {
   }, []);
 
   const handleKeyDown = useCallback((e) => {
-    if (!gameState.isGameOver && !gameState.isPaused) {
+    // Only process input if game is started and not paused/over
+    if (gameState.isStarted && !gameState.isGameOver && !gameState.isPaused) {
       if (LANES.some(lane => lane.key === e.key)) {
         e.preventDefault();
         
@@ -95,8 +97,9 @@ const useGameLogic = () => {
   }, []);
 
   const updateGame = useCallback(() => {
-    if (gameState.isGameOver || gameState.isPaused) return;
-
+    // Only update game if it's started and not paused/over
+    if (!gameState.isStarted || gameState.isGameOver || gameState.isPaused) return;
+    
     const now = Date.now();
     const timeSinceLastTile = now - gameState.lastTileTime;
     let newTiles = [...gameState.tiles];
@@ -113,27 +116,35 @@ const useGameLogic = () => {
     
     // Generate new tile
     if (timeSinceLastTile > tileInterval) {
-      // Generate multiple tiles at higher difficulties
       const tilesToAdd = Math.min(3, Math.floor(difficulty / 2));
+      const newTile = generateTile();
       
-      for (let i = 0; i < tilesToAdd; i++) {
-        // Add delay between tiles when generating multiple
-        setTimeout(() => {
-          setGameState(prev => ({
-            ...prev,
-            tiles: [...prev.tiles, generateTile()],
-            lastTileTime: now
-          }));
-        }, i * 100);
+      setGameState(prev => ({
+        ...prev,
+        tiles: [...prev.tiles, newTile],
+        lastTileTime: now
+      }));
+      
+      // Add additional tiles with delay at higher difficulties
+      if (tilesToAdd > 1) {
+        for (let i = 1; i < tilesToAdd; i++) {
+          setTimeout(() => {
+            setGameState(prev => ({
+              ...prev,
+              tiles: [...prev.tiles, generateTile()],
+            }));
+          }, i * 200);
+        }
       }
     }
     
     // Update tile positions and check for missed tiles
     newTiles = newTiles.map(tile => {
+      // Ensure tiles move down the screen
       const newY = tile.y + tileSpeed;
       
       // Calculate screen height percentage for missed tiles
-      const missThreshold = window.innerHeight * 0.85 * 0.7; // 85% of game area height
+      const missThreshold = window.innerHeight * 0.85 * 0.7;
       
       // Mark tiles as missed if they go beyond the piano keys
       if (newY > missThreshold && !tile.hit && !tile.missed) {
@@ -158,12 +169,21 @@ const useGameLogic = () => {
     }));
   }, [gameState, generateTile]);
 
+  const startGame = () => {
+    setGameState(prev => ({
+      ...prev,
+      isStarted: true,
+      lastTileTime: Date.now()
+    }));
+  };
+
   const restartGame = () => {
     setGameState({
       tiles: [],
       score: 0,
       isGameOver: false,
       isPaused: false,
+      isStarted: false, // Reset to not started
       tileSpeed: 2,
       lastTileTime: Date.now(),
       pressedKeys: { ArrowLeft: false, ArrowDown: false, ArrowRight: false, ArrowUp: false },
@@ -189,9 +209,9 @@ const useGameLogic = () => {
     handleKeyDown,
     handleKeyUp,
     togglePause,
-    restartGame
+    restartGame,
+    startGame // Export new start function
   };
 };
 
 export default useGameLogic;
-

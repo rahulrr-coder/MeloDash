@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import Lane from './Lane';
 import PianoKey from './PianoKey';
 import Tile from './Tile';
@@ -13,7 +13,8 @@ const Game = () => {
     handleKeyDown,
     handleKeyUp,
     togglePause,
-    restartGame
+    restartGame,
+    startGame
   } = useGameLogic();
 
   useEffect(() => {
@@ -64,7 +65,15 @@ const Game = () => {
           ))}
         </div>
         
-        {/* Game over and pause overlays */}
+        {/* Show start screen if game is not started */}
+        {!gameState.isStarted && !gameState.isGameOver && (
+          <GameOverlay 
+            type="start" 
+            onStart={startGame} 
+          />
+        )}
+        
+        {/* Game over overlay */}
         {gameState.isGameOver && (
           <GameOverlay 
             type="gameover" 
@@ -73,6 +82,7 @@ const Game = () => {
           />
         )}
         
+        {/* Pause overlay */}
         {gameState.isPaused && !gameState.isGameOver && (
           <GameOverlay 
             type="paused" 
@@ -85,8 +95,10 @@ const Game = () => {
       <GameControls 
         isPaused={gameState.isPaused} 
         isGameOver={gameState.isGameOver} 
+        isStarted={gameState.isStarted}
         onTogglePause={togglePause} 
         onRestart={restartGame} 
+        onStart={startGame}
       />
       
       <div className="mt-6 text-gray-400">

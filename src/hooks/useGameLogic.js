@@ -4,7 +4,7 @@ import useAudio from './useAudio';
 
 const useGameLogic = () => {
   // Use audio hook
-  const { playNote, playSuccess, playFail, initAudio } = useAudio();
+  const { playNote, playSuccess, playFail, initAudio, audioReady } = useAudio();
   
   // Use a ref to keep track of game area height
   const gameAreaHeight = useRef(window.innerHeight * 0.7);
@@ -258,7 +258,9 @@ const useGameLogic = () => {
     togglePause,
     restartGame,
     startGame,
-    resetHighScore
+    resetHighScore,
+    initAudio,
+    audioReady
   };
 };
 

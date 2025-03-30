@@ -19,7 +19,9 @@ const Game = () => {
     togglePause,
     restartGame,
     startGame,
-    resetHighScore
+    resetHighScore,
+    initAudio,
+    audioReady
   } = useGameLogic();
 
   useEffect(() => {
@@ -41,8 +43,7 @@ const Game = () => {
       // Toggle mute with 'M' key
       if (e.key === 'm' || e.key === 'M') {
         setAudioMuted(prev => !prev);
-        // This doesn't actually mute the audio - that would need to be implemented in useAudio
-        // We're just tracking the state here for display purposes
+        // This doesn't actually mute the audio - would need to be implemented in useAudio
       }
     };
     
@@ -66,7 +67,7 @@ const Game = () => {
             Tiles: {gameState.tiles.length} | 
             Speed: {gameState.tileSpeed.toFixed(1)} | 
             Started: {gameState.isStarted ? 'Yes' : 'No'} |
-            Audio: {audioMuted ? 'Muted' : 'On'}
+            Audio: {audioMuted ? 'Muted' : (audioReady ? 'Ready' : 'Not Initialized')}
           </div>
         )}
       </div>
@@ -119,6 +120,7 @@ const Game = () => {
             type="start" 
             onStart={startGame}
             highScore={highScore} 
+            initAudio={initAudio}
           />
         )}
         
@@ -130,6 +132,7 @@ const Game = () => {
             highScore={highScore}
             onRestart={restartGame} 
             isNewHighScore={gameState.score >= highScore}
+            initAudio={initAudio}
           />
         )}
         
@@ -138,18 +141,28 @@ const Game = () => {
           <GameOverlay 
             type="paused" 
             onResume={togglePause} 
+            initAudio={initAudio}
           />
         )}
       </div>
       
-      {/* Game controls */}
+      {/* Game controls with audio initialization */}
       <GameControls 
         isPaused={gameState.isPaused} 
         isGameOver={gameState.isGameOver} 
         isStarted={gameState.isStarted}
-        onTogglePause={togglePause} 
-        onRestart={restartGame} 
-        onStart={startGame}
+        onTogglePause={() => {
+          initAudio();
+          togglePause();
+        }} 
+        onRestart={() => {
+          initAudio();
+          restartGame();
+        }} 
+        onStart={() => {
+          initAudio();
+          startGame();
+        }}
         onResetHighScore={resetHighScore}
         showResetHighScore={highScore > 0}
       />
@@ -157,8 +170,18 @@ const Game = () => {
       <div className="mt-6 text-gray-400">
         Use the arrow keys to play. Press Space to restart after game over.
         Press M to mute/unmute sounds.
+        {!audioReady && <span className="text-yellow-400"> Click any button to enable audio.</span>}
         {debugMode && " | Debug mode: ON (press 'D' to toggle)"}
       </div>
+      
+      {!audioReady && (
+        <button 
+          onClick={initAudio}
+          className="mt-2 bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded"
+        >
+          Enable Audio
+        </button>
+      )}
       
       {!debugMode && (
         <button 

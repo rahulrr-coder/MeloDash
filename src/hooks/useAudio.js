@@ -1,95 +1,134 @@
-//Using Tone.js for audio
-
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 
 const useAudio = () => {
+  const [audioReady, setAudioReady] = useState(false);
   const synth = useRef(null);
-  const isInitialized = useRef(false);
+  const successSound = useRef(null);
+  const failSound = useRef(null);
+  const loadedSounds = useRef(false);
 
   // Notes for each lane (pentatonic scale)
   const laneNotes = ['C4', 'D4', 'E4', 'G4'];
-  
-  // Success and fail sounds
-  const successSound = useRef(null);
-  const failSound = useRef(null);
 
   useEffect(() => {
-    // Initialize Tone.js
-    if (!isInitialized.current) {
-      // Create polyphonic synth for multiple notes
-      synth.current = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Initialize Tone.js only once
+    const setupAudio = async () => {
+      // Create synth
+      if (!synth.current) {
+        synth.current = new Tone.PolySynth(Tone.Synth).toDestination();
+      }
       
-      // Create player for success sound
-      successSound.current = new Tone.Player({
-        url: "https://tonejs.github.io/audio/berklee/gong_1.mp3",
-        autostart: false,
-        volume: -10
-      }).toDestination();
-      
-      // Create player for fail sound
-      failSound.current = new Tone.Player({
-        url: "https://tonejs.github.io/audio/drum-samples/808/tom-short.mp3",
-        autostart: false,
-        volume: -5
-      }).toDestination();
-      
-      isInitialized.current = true;
-    }
+      try {
+        // Load sounds only once
+        if (!loadedSounds.current) {
+          // Create players for sounds
+          successSound.current = new Tone.Player({
+            url: "https://tonejs.github.io/audio/berklee/gong_1.mp3",
+            autostart: false,
+            volume: -10,
+            onload: () => console.log("Success sound loaded")
+          }).toDestination();
+          
+          failSound.current = new Tone.Player({
+            url: "https://tonejs.github.io/audio/drum-samples/808/tom-short.mp3",
+            autostart: false,
+            volume: -5,
+            onload: () => console.log("Fail sound loaded")
+          }).toDestination();
+          
+          loadedSounds.current = true;
+        }
+      } catch (error) {
+        console.error("Error setting up audio:", error);
+      }
+    };
     
+    setupAudio();
+    
+    // Cleanup function
     return () => {
-      // Clean up
+      // Properly dispose of resources
       if (synth.current) {
         synth.current.dispose();
+        synth.current = null;
       }
+      
       if (successSound.current) {
         successSound.current.dispose();
+        successSound.current = null;
       }
+      
       if (failSound.current) {
         failSound.current.dispose();
+        failSound.current = null;
       }
+      
+      loadedSounds.current = false;
     };
   }, []);
 
-  // Function to start audio context
+  // Function to start audio context on user interaction
   const initAudio = async () => {
     if (Tone.context.state !== 'running') {
-      await Tone.start();
+      try {
+        await Tone.start();
+        console.log("Audio context started!");
+        setAudioReady(true);
+      } catch (error) {
+        console.error("Could not start audio context:", error);
+      }
+    } else {
+      setAudioReady(true);
     }
   };
 
   // Play a note for a specific lane
   const playNote = (laneIndex) => {
-    if (!synth.current || laneIndex < 0 || laneIndex >= laneNotes.length) return;
+    if (!audioReady || !synth.current || laneIndex < 0 || laneIndex >= laneNotes.length) return;
     
-    // Ensure audio context is running
-    initAudio();
-    
-    // Play the note with a short duration
-    synth.current.triggerAttackRelease(laneNotes[laneIndex], "8n");
+    try {
+      // Play the note with a short duration
+      synth.current.triggerAttackRelease(laneNotes[laneIndex], "8n");
+    } catch (error) {
+      console.error("Error playing note:", error);
+    }
   };
 
   // Play success sound (for combo or high score)
   const playSuccess = () => {
-    if (!successSound.current) return;
+    if (!audioReady || !successSound.current) return;
     
-    initAudio();
-    successSound.current.start();
+    try {
+      // Check if the buffer is loaded and player is not playing
+      if (successSound.current.loaded && !successSound.current.state === "started") {
+        successSound.current.start();
+      }
+    } catch (error) {
+      console.error("Error playing success sound:", error);
+    }
   };
 
   // Play fail sound (when missing a tile)
   const playFail = () => {
-    if (!failSound.current) return;
+    if (!audioReady || !failSound.current) return;
     
-    initAudio();
-    failSound.current.start();
+    try {
+      // Check if the buffer is loaded and player is not playing
+      if (failSound.current.loaded && !failSound.current.state === "started") {
+        failSound.current.start();
+      }
+    } catch (error) {
+      console.error("Error playing fail sound:", error);
+    }
   };
 
   return {
     playNote,
     playSuccess,
     playFail,
-    initAudio
+    initAudio,
+    audioReady
   };
 };
 

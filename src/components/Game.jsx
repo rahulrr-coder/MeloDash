@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Lane from './Lane';
 import PianoKey from './PianoKey';
 import Tile from './Tile';
@@ -8,6 +8,8 @@ import useGameLogic from '../hooks/useGameLogic';
 import { LANES } from '../constants';
 
 const Game = () => {
+  const [debugMode, setDebugMode] = useState(false);
+  
   const {
     gameState,
     handleKeyDown,
@@ -27,11 +29,30 @@ const Game = () => {
     };
   }, [handleKeyDown, handleKeyUp]);
 
+  // Toggle debug mode with 'D' key
+  useEffect(() => {
+    const toggleDebug = (e) => {
+      if (e.key === 'd' || e.key === 'D') {
+        setDebugMode(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', toggleDebug);
+    return () => window.removeEventListener('keydown', toggleDebug);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-white p-4">
       <h1 className="text-4xl font-bold mb-2">Piano Tiles</h1>
-      <div className="mb-4 text-2xl">
-        Score: {gameState.score}
+      <div className="mb-4 text-2xl flex items-center gap-4">
+        <span>Score: {gameState.score}</span>
+        {debugMode && (
+          <span className="text-yellow-300">
+            Tiles: {gameState.tiles.length} | 
+            Speed: {gameState.tileSpeed.toFixed(1)} | 
+            Started: {gameState.isStarted ? 'Yes' : 'No'}
+          </span>
+        )}
       </div>
       
       <div className="relative w-full max-w-4xl h-[70vh] bg-gray-800 overflow-hidden rounded-lg shadow-2xl">
@@ -44,6 +65,17 @@ const Game = () => {
             <Lane key={index} index={index} />
           ))}
         </div>
+        
+        {/* Debug info for tiles */}
+        {debugMode && gameState.tiles.length > 0 && (
+          <div className="absolute top-2 left-2 bg-black bg-opacity-70 p-2 rounded z-30 text-xs">
+            {gameState.tiles.map((tile, i) => (
+              <div key={i}>
+                Tile {i}: Lane {tile.lane}, Y-pos: {tile.y.toFixed(1)}, Hit: {tile.hit ? 'Yes' : 'No'}
+              </div>
+            ))}
+          </div>
+        )}
         
         {/* Falling tiles */}
         {gameState.tiles.map(tile => (
@@ -103,7 +135,17 @@ const Game = () => {
       
       <div className="mt-6 text-gray-400">
         Use the arrow keys to play. Press Space to restart after game over.
+        {debugMode && " | Debug mode: ON (press 'D' to toggle)"}
       </div>
+      
+      {!debugMode && (
+        <button 
+          onClick={() => setDebugMode(true)} 
+          className="mt-2 text-xs text-gray-500 hover:text-gray-300"
+        >
+          Enable Debug Mode
+        </button>
+      )}
     </div>
   );
 };

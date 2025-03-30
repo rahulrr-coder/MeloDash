@@ -1,84 +1,85 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LANES } from '../constants';
 
 const useGameLogic = () => {
+  // Use a ref to keep track of game area height
+  const gameAreaHeight = useRef(window.innerHeight * 0.7);
+  
   const [gameState, setGameState] = useState({
     tiles: [],
     score: 0,
     isGameOver: false,
     isPaused: false,
-    isStarted: false, // Add new state to track if game has started
-    tileSpeed: 2,
-    lastTileTime: Date.now(),
+    isStarted: false,
+    tileSpeed: 1, // Reduced initial speed for debugging
+    lastTileTime: 0,
     pressedKeys: { ArrowLeft: false, ArrowDown: false, ArrowRight: false, ArrowUp: false },
     difficulty: 1,
     combo: 0
   });
 
+  // Generate a tile at the top of the screen (negative y position)
   const generateTile = useCallback(() => {
     const laneIndex = Math.floor(Math.random() * 4);
     return {
       id: Date.now() + Math.random(),
       lane: laneIndex,
-      y: -100,
+      y: -10, // Use percentage instead of pixels, starting above the visible area
       hit: false,
       missed: false
     };
   }, []);
 
   const handleKeyDown = useCallback((e) => {
-    // Only process input if game is started and not paused/over
-    if (gameState.isStarted && !gameState.isGameOver && !gameState.isPaused) {
-      if (LANES.some(lane => lane.key === e.key)) {
-        e.preventDefault();
-        
-        const laneIndex = LANES.findIndex(lane => lane.key === e.key);
-        
-        // Update pressedKeys state
+    if (!gameState.isStarted || gameState.isGameOver || gameState.isPaused) return;
+    
+    if (LANES.some(lane => lane.key === e.key)) {
+      e.preventDefault();
+      
+      const laneIndex = LANES.findIndex(lane => lane.key === e.key);
+      
+      // Update pressedKeys state
+      setGameState(prev => ({
+        ...prev,
+        pressedKeys: { ...prev.pressedKeys, [e.key]: true }
+      }));
+      
+      // Hit zone is 60-75% of the game board height
+      const bottomTiles = gameState.tiles.filter(
+        tile => tile.lane === laneIndex && 
+        tile.y >= 60 && // Using percentage
+        tile.y <= 75 && // Using percentage
+        !tile.hit && 
+        !tile.missed
+      );
+      
+      if (bottomTiles.length > 0) {
+        // Hit successful
+        setGameState(prev => {
+          const updatedTiles = prev.tiles.map(tile => {
+            if (tile.id === bottomTiles[0].id) {
+              return { ...tile, hit: true };
+            }
+            return tile;
+          });
+          
+          const newCombo = prev.combo + 1;
+          const comboBonus = Math.floor(newCombo / 5) * 0.1;
+          const scoreIncrease = 1 + comboBonus;
+          
+          return {
+            ...prev,
+            tiles: updatedTiles,
+            score: prev.score + scoreIncrease,
+            combo: newCombo
+          };
+        });
+      } else {
+        // Reset combo when pressing key with no tile
         setGameState(prev => ({
           ...prev,
-          pressedKeys: { ...prev.pressedKeys, [e.key]: true }
+          combo: 0
         }));
-        
-        // Hit zone is 60-75% of the game board height
-        const bottomTiles = gameState.tiles.filter(
-          tile => tile.lane === laneIndex && 
-          tile.y >= window.innerHeight * 0.6 * 0.7 && 
-          tile.y <= window.innerHeight * 0.75 * 0.7 && 
-          !tile.hit && 
-          !tile.missed
-        );
-        
-        if (bottomTiles.length > 0) {
-          // Hit successful
-          setGameState(prev => {
-            const updatedTiles = prev.tiles.map(tile => {
-              if (tile.id === bottomTiles[0].id) {
-                return { ...tile, hit: true };
-              }
-              return tile;
-            });
-            
-            // Increase combo for successful hits
-            const newCombo = prev.combo + 1;
-            // Calculate score with combo multiplier
-            const comboBonus = Math.floor(newCombo / 5) * 0.1;
-            const scoreIncrease = 1 + comboBonus;
-            
-            return {
-              ...prev,
-              tiles: updatedTiles,
-              score: prev.score + scoreIncrease,
-              combo: newCombo
-            };
-          });
-        } else {
-          // Reset combo when pressing key with no tile
-          setGameState(prev => ({
-            ...prev,
-            combo: 0
-          }));
-        }
       }
     }
     
@@ -96,27 +97,24 @@ const useGameLogic = () => {
     }
   }, []);
 
+  // Game update logic - this is where tiles move down
   const updateGame = useCallback(() => {
-    // Only update game if it's started and not paused/over
     if (!gameState.isStarted || gameState.isGameOver || gameState.isPaused) return;
     
     const now = Date.now();
     const timeSinceLastTile = now - gameState.lastTileTime;
-    let newTiles = [...gameState.tiles];
-    let gameOver = false;
     
     // Calculate difficulty based on score
     const difficulty = 1 + Math.floor(gameState.score / 10) * 0.2;
     
     // Adjust tile generation frequency based on difficulty
-    const tileInterval = Math.max(300, 1000 - (difficulty * 100));
+    const tileInterval = Math.max(800, 2000 - (difficulty * 200)); // Increased intervals for debugging
     
-    // Speed increases with score
-    const tileSpeed = 2 + Math.floor(gameState.score / 10) * 0.5;
+    // Speed increases with score but starts slower for debugging
+    const tileSpeed = 0.5 + Math.floor(gameState.score / 10) * 0.2;
     
-    // Generate new tile
+    // Generate new tile on interval
     if (timeSinceLastTile > tileInterval) {
-      const tilesToAdd = Math.min(3, Math.floor(difficulty / 2));
       const newTile = generateTile();
       
       setGameState(prev => ({
@@ -125,51 +123,46 @@ const useGameLogic = () => {
         lastTileTime: now
       }));
       
-      // Add additional tiles with delay at higher difficulties
-      if (tilesToAdd > 1) {
-        for (let i = 1; i < tilesToAdd; i++) {
-          setTimeout(() => {
-            setGameState(prev => ({
-              ...prev,
-              tiles: [...prev.tiles, generateTile()],
-            }));
-          }, i * 200);
-        }
-      }
+      console.log("Generated new tile", newTile); // Debug log
     }
     
-    // Update tile positions and check for missed tiles
-    newTiles = newTiles.map(tile => {
-      // Ensure tiles move down the screen
-      const newY = tile.y + tileSpeed;
+    // Move existing tiles down
+    setGameState(prev => {
+      // Create a new array of tiles with updated positions
+      const updatedTiles = prev.tiles.map(tile => {
+        // Add speed to y position to move the tile down
+        const newY = tile.y + tileSpeed;
+        
+        // Check if tile has been missed (reached bottom without being hit)
+        if (newY > 90 && !tile.hit && !tile.missed) { // Using percentage (90% of game area)
+          return { ...tile, y: newY, missed: true };
+        }
+        
+        // Remove tiles that are far off-screen
+        if (newY > 110) { // Using percentage (110% of game area)
+          return null;
+        }
+        
+        // Update tile position
+        return { ...tile, y: newY };
+      }).filter(Boolean); // Remove null tiles
       
-      // Calculate screen height percentage for missed tiles
-      const missThreshold = window.innerHeight * 0.85 * 0.7;
+      // Check for game over condition
+      const missedTiles = updatedTiles.filter(tile => tile.missed);
+      const gameOver = missedTiles.length > 0;
       
-      // Mark tiles as missed if they go beyond the piano keys
-      if (newY > missThreshold && !tile.hit && !tile.missed) {
-        gameOver = true;
-        return { ...tile, y: newY, missed: true };
-      }
-      
-      // Remove tiles that are off-screen
-      if (newY > window.innerHeight) {
-        return null;
-      }
-      
-      return { ...tile, y: newY };
-    }).filter(Boolean);
-    
-    setGameState(prev => ({
-      ...prev,
-      tiles: newTiles,
-      isGameOver: gameOver,
-      tileSpeed,
-      difficulty
-    }));
+      return {
+        ...prev,
+        tiles: updatedTiles,
+        isGameOver: gameOver,
+        tileSpeed,
+        difficulty
+      };
+    });
   }, [gameState, generateTile]);
 
   const startGame = () => {
+    console.log("Game started");
     setGameState(prev => ({
       ...prev,
       isStarted: true,
@@ -178,13 +171,14 @@ const useGameLogic = () => {
   };
 
   const restartGame = () => {
+    console.log("Game restarted");
     setGameState({
       tiles: [],
       score: 0,
       isGameOver: false,
       isPaused: false,
-      isStarted: false, // Reset to not started
-      tileSpeed: 2,
+      isStarted: false,
+      tileSpeed: 1,
       lastTileTime: Date.now(),
       pressedKeys: { ArrowLeft: false, ArrowDown: false, ArrowRight: false, ArrowUp: false },
       difficulty: 1,
@@ -199,10 +193,25 @@ const useGameLogic = () => {
     }));
   };
 
+  // Set up game loop
   useEffect(() => {
-    const gameLoop = setInterval(updateGame, 16);
+    const gameLoop = setInterval(() => {
+      updateGame();
+    }, 33); // ~30 FPS
+    
     return () => clearInterval(gameLoop);
   }, [updateGame]);
+
+  // Debug logging to help diagnose the issue
+  useEffect(() => {
+    if (gameState.isStarted) {
+      console.log("Game state:", {
+        tilesCount: gameState.tiles.length,
+        isStarted: gameState.isStarted,
+        isPaused: gameState.isPaused
+      });
+    }
+  }, [gameState.isStarted, gameState.tiles.length]);
 
   return {
     gameState,
@@ -210,7 +219,7 @@ const useGameLogic = () => {
     handleKeyUp,
     togglePause,
     restartGame,
-    startGame // Export new start function
+    startGame
   };
 };
 
